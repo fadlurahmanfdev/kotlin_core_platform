@@ -8,7 +8,7 @@ import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.CoordinateModel
 
 interface CorePlatformRepository {
     fun isLocationEnabled(context: Context): Boolean
-    fun getCurrentLocation(
+    fun requestAndForgetLocation(
         context: Context,
         onSuccess: (CoordinateModel) -> Unit,
         onError: (CorePlatformException) -> Unit
@@ -21,6 +21,4 @@ interface CorePlatformRepository {
         onSuccess: (AddressModel) -> Unit,
         onError: (CorePlatformException) -> Unit,
     )
-
-    fun removeLocationManager()
 }

@@ -31,7 +31,7 @@ class ExampleCryptoUseCaseImpl(
         onSuccess: (CoordinateModel) -> Unit,
         onError: (CorePlatformException) -> Unit
     ) {
-        return platformRepository.getCurrentLocation(context, onSuccess, onError = onError)
+        return platformRepository.requestAndForgetLocation(context, onSuccess, onError = onError)
     }
 
 
@@ -40,7 +40,7 @@ class ExampleCryptoUseCaseImpl(
         onSuccess: (AddressModel) -> Unit,
         onError: (CorePlatformException) -> Unit
     ) {
-        platformRepository.getCurrentLocation(
+        platformRepository.requestAndForgetLocation(
             context,
             onSuccess = { coordinate ->
                 platformRepository.getAddress(
