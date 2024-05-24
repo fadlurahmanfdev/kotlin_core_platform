@@ -44,3 +44,17 @@ dependencies {
 
     implementation("com.google.android.gms:play-services-location:17.0.0")
 }
+
+publishing {
+    publications {
+        register<MavenPublication>("release"){
+            groupId = "co.id.fadlurahmanfdev"
+            artifactId = "kotlin_core_platform"
+            version = "0.0.3"
+
+            afterEvaluate {
+                from(components["release"])
+            }
+        }
+    }
+}
