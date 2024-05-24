@@ -50,7 +50,7 @@ publishing {
         register<MavenPublication>("release"){
             groupId = "co.id.fadlurahmanfdev"
             artifactId = "kotlin_core_platform"
-            version = "0.0.3"
+            version = "0.0.4"
 
             afterEvaluate {
                 from(components["release"])
