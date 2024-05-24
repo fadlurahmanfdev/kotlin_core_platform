@@ -7,6 +7,7 @@ import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.AddressModel
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.CoordinateModel
 
 interface CorePlatformRepository {
+    fun isLocationPermissionEnabled(context: Context): Boolean
     fun isLocationEnabled(context: Context): Boolean
     fun requestAndForgetLocation(
         context: Context,

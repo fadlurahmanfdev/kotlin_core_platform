@@ -1,6 +1,8 @@
 package co.id.fadlurahmanfdev.kotlin_core_platform.data.repository
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.LocationManager
 import android.os.Build
@@ -21,6 +23,16 @@ class CorePlatformRepositoryImpl : CorePlatformRepository {
         }
         locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         return locationManager
+    }
+
+    override fun isLocationPermissionEnabled(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     override fun isLocationEnabled(context: Context): Boolean {
