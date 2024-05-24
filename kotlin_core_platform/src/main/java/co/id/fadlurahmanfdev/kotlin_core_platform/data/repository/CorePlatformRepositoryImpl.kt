@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.LocationManager
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationListenerCompat
 import androidx.core.location.LocationManagerCompat
@@ -52,7 +53,21 @@ class CorePlatformRepositoryImpl : CorePlatformRepository {
     ) {
         try {
             val locationManager = getLocationManager(context)
-            val locationRequest = LocationRequestCompat.Builder(60000).build()
+            val lastKnown = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+            if (lastKnown != null) {
+                Log.d(CorePlatformRepositoryImpl::class.java.simpleName, "Last known fetched")
+                onSuccess(
+                    CoordinateModel(
+                        latitude = lastKnown.latitude,
+                        longitude = lastKnown.longitude
+                    )
+                )
+                return
+            }
+            Log.d(CorePlatformRepositoryImpl::class.java.simpleName, "Last known not fetched, request new location")
+            val locationRequest = LocationRequestCompat.Builder(0)
+                .setQuality(LocationRequestCompat.QUALITY_BALANCED_POWER_ACCURACY)
+                .build()
             requestAndForgetLocationListener = LocationListenerCompat { location ->
                 onSuccess(
                     CoordinateModel(
