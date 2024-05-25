@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformRepositoryImpl
 import co.id.fadlurahmanfdev.kotlincoreplatform.R
 import co.id.fadlurahmanfdev.kotlincoreplatform.data.FeatureModel
-import co.id.fadlurahmanfdev.kotlincoreplatform.domain.ExampleCryptoUseCaseImpl
+import co.id.fadlurahmanfdev.kotlincoreplatform.domain.ExampleCorePlatformUseCaseImpl
 
 class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
     lateinit var viewModel: MainViewModel
@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
         rv = findViewById<RecyclerView>(R.id.rv)
 
         viewModel = MainViewModel(
-            exampleCryptoUseCase = ExampleCryptoUseCaseImpl(
+            exampleCorePlatformUseCase = ExampleCorePlatformUseCaseImpl(
                 platformRepository = CorePlatformRepositoryImpl()
             )
         )

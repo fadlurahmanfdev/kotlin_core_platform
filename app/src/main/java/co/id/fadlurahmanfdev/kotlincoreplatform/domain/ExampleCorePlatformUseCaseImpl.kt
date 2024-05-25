@@ -9,9 +9,9 @@ import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.AddressModel
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.CoordinateModel
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformRepository
 
-class ExampleCryptoUseCaseImpl(
+class ExampleCorePlatformUseCaseImpl(
     private val platformRepository: CorePlatformRepository,
-) : ExampleCryptoUseCase {
+) : ExampleCorePlatformUseCase {
     override fun isLocationPermissionGranted(context: Context): Boolean {
         return ActivityCompat.checkSelfPermission(
             context,

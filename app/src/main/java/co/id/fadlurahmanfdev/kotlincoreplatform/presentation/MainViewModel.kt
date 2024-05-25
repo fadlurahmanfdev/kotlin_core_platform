@@ -3,14 +3,14 @@ package co.id.fadlurahmanfdev.kotlincoreplatform.presentation
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import co.id.fadlurahmanfdev.kotlincoreplatform.domain.ExampleCryptoUseCase
+import co.id.fadlurahmanfdev.kotlincoreplatform.domain.ExampleCorePlatformUseCase
 
 class MainViewModel(
-    private val exampleCryptoUseCase: ExampleCryptoUseCase
+    private val exampleCorePlatformUseCase: ExampleCorePlatformUseCase
 ) : ViewModel() {
 
     fun checkIsLocationEnabled(context: Context) {
-        val isEnabled = exampleCryptoUseCase.isLocationEnabled(context)
+        val isEnabled = exampleCorePlatformUseCase.isLocationEnabled(context)
         Log.d(
             MainViewModel::class.java.simpleName,
             "IS LOCATION ENABLED: $isEnabled"
@@ -18,7 +18,7 @@ class MainViewModel(
     }
 
     fun getLastCoordinate(context: Context) {
-        exampleCryptoUseCase.getCurrentLocation(
+        exampleCorePlatformUseCase.getCurrentLocation(
             context,
             onSuccess = { location ->
                 Log.d(
@@ -37,7 +37,7 @@ class MainViewModel(
     }
 
     fun getAddress(context: Context) {
-        exampleCryptoUseCase.getAddress(
+        exampleCorePlatformUseCase.getAddress(
             context,
             onSuccess = { address ->
                 Log.d(MainViewModel::class.java.simpleName, "Country: ${address.country}")

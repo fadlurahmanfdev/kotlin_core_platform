@@ -5,7 +5,7 @@ import co.id.fadlurahmanfdev.kotlin_core_platform.data.exception.CorePlatformExc
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.AddressModel
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.CoordinateModel
 
-interface ExampleCryptoUseCase {
+interface ExampleCorePlatformUseCase {
     fun isLocationPermissionGranted(context: Context): Boolean
 
     fun isLocationEnabled(context: Context): Boolean
