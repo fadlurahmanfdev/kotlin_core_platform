@@ -3,7 +3,9 @@ package co.id.fadlurahmanfdev.kotlin_core_platform.data.repository
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.Address
 import android.location.Geocoder
+import android.location.Location
 import android.location.LocationManager
 import android.os.Build
 import android.util.Log
@@ -14,30 +16,48 @@ import androidx.core.location.LocationRequestCompat
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.exception.CorePlatformException
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.AddressModel
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.CoordinateModel
+import io.reactivex.rxjava3.core.Observable
 import java.util.Locale
 
-class CorePlatformRepositoryImpl : CorePlatformRepository {
-    private lateinit var locationManager: LocationManager
-    private fun getLocationManager(context: Context): LocationManager {
-        if (this::locationManager.isInitialized) {
-            return locationManager
-        }
-        locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        return locationManager
+class CorePlatformRepositoryImpl(private val context: Context) : CorePlatformRepository {
+    private var locationManager: LocationManager =
+        context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+    private fun getCoordinateModelFromLocation(location: Location): CoordinateModel {
+        return CoordinateModel(
+            latitude = location.latitude,
+            longitude = location.longitude,
+        )
     }
 
-    override fun isLocationPermissionEnabled(context: Context): Boolean {
+    private fun getAddress(latitude: Double, longitude: Double, address: Address): AddressModel {
+        return AddressModel(
+            country = address.countryName,
+            adminArea = address.adminArea,
+            subAdminArea = address.subAdminArea,
+            locality = address.locality,
+            subLocality = address.subLocality,
+            postalCode = address.postalCode,
+            latitude = latitude,
+            longitude = longitude,
+        )
+    }
+
+    override fun isFineLocationEnabled(): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    override fun isCoarseLocationEnabled(): Boolean {
+        return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    override fun isLocationEnabled(context: Context): Boolean {
-        val locationManager = getLocationManager(context)
+    override fun isLocationEnabled(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             locationManager.isLocationEnabled
         } else {
@@ -45,117 +65,86 @@ class CorePlatformRepositoryImpl : CorePlatformRepository {
         }
     }
 
-    private var requestAndForgetLocationListener: LocationListenerCompat? = null
-    override fun requestAndForgetLocation(
-        context: Context,
-        onSuccess: (CoordinateModel) -> Unit,
-        onError: (CorePlatformException) -> Unit,
-    ) {
-        try {
-            val locationManager = getLocationManager(context)
-            val lastKnown = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-            if (lastKnown != null) {
-                Log.d(CorePlatformRepositoryImpl::class.java.simpleName, "Last known fetched")
-                onSuccess(
-                    CoordinateModel(
-                        latitude = lastKnown.latitude,
-                        longitude = lastKnown.longitude
-                    )
+    override fun requestCurrentCoordinate(): Observable<CoordinateModel> {
+        var locationListenerCompat: LocationListenerCompat? = null
+        return Observable.create { emitter ->
+            try {
+                val lastKnownLocation =
+                    locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                if (lastKnownLocation != null) {
+                    Log.d(CorePlatformRepositoryImpl::class.java.simpleName, "last known fetched")
+                    emitter.onNext(getCoordinateModelFromLocation(lastKnownLocation))
+                    emitter.onComplete()
+                    return@create
+                }
+                Log.d(
+                    CorePlatformRepositoryImpl::class.java.simpleName,
+                    "last known is not fetched, request a new one"
                 )
-                return
-            }
-            Log.d(CorePlatformRepositoryImpl::class.java.simpleName, "Last known not fetched, request new location")
-            val locationRequest = LocationRequestCompat.Builder(0)
-                .setQuality(LocationRequestCompat.QUALITY_BALANCED_POWER_ACCURACY)
-                .build()
-            requestAndForgetLocationListener = LocationListenerCompat { location ->
-                onSuccess(
-                    CoordinateModel(
-                        latitude = location.latitude,
-                        longitude = location.longitude
-                    )
-                )
-                LocationManagerCompat.removeUpdates(
+
+                val locationRequest = LocationRequestCompat.Builder(60000)
+                    .setMinUpdateIntervalMillis(30000)
+                    .setQuality(LocationRequestCompat.QUALITY_HIGH_ACCURACY)
+                    .setMaxUpdates(1)
+                    .build()
+                locationListenerCompat = LocationListenerCompat { location ->
+                    emitter.onNext(getCoordinateModelFromLocation(location))
+                    LocationManagerCompat.removeUpdates(locationManager, locationListenerCompat!!)
+                    emitter.onComplete()
+                }
+                LocationManagerCompat.requestLocationUpdates(
                     locationManager,
-                    requestAndForgetLocationListener!!
+                    LocationManager.NETWORK_PROVIDER,
+                    locationRequest,
+                    ContextCompat.getMainExecutor(context),
+                    locationListenerCompat!!,
                 )
+                return@create
+            } catch (e: Throwable) {
+                emitter.onError(e)
+                LocationManagerCompat.removeUpdates(locationManager, locationListenerCompat!!)
+                emitter.onComplete()
             }
-            LocationManagerCompat.requestLocationUpdates(
-                locationManager,
-                LocationManager.NETWORK_PROVIDER,
-                locationRequest,
-                ContextCompat.getMainExecutor(context),
-                requestAndForgetLocationListener!!,
-            )
-        } catch (e: Throwable) {
-            if (requestAndForgetLocationListener != null) {
-                LocationManagerCompat.removeUpdates(
-                    locationManager,
-                    requestAndForgetLocationListener!!
-                )
-            }
-            requestAndForgetLocationListener = null;
-            onError(CorePlatformException(code = "REQUEST_LOCATION_00", message = e.message ?: "-"))
         }
     }
 
     override fun getAddress(
-        context: Context,
         latitude: Double,
         longitude: Double,
-        onSuccess: (AddressModel) -> Unit,
-        onError: (CorePlatformException) -> Unit,
-    ) {
-        val geoCoder = Geocoder(context, Locale.getDefault())
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            geoCoder.getFromLocation(
-                latitude, longitude, 1,
-            ) { addresses ->
+    ): Observable<AddressModel> {
+        return Observable.create { emitter ->
+            val geoCoder = Geocoder(context, Locale.getDefault())
+            var address: Address? = null
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                geoCoder.getFromLocation(latitude, longitude, 1) { addresses ->
+                    if (addresses.isNotEmpty()) {
+                        address = addresses.first()
+                    }
+                }
+            } else {
+                val addresses = geoCoder.getFromLocation(latitude, longitude, 1) ?: listOf()
                 if (addresses.isNotEmpty()) {
-                    val address = addresses.first()
-                    onSuccess(
-                        AddressModel(
-                            country = address.countryName,
-                            adminArea = address.adminArea,
-                            subAdminArea = address.subAdminArea,
-                            locality = address.locality,
-                            subLocality = address.subLocality,
-                            postalCode = address.postalCode,
-                            latitude = latitude,
-                            longitude = longitude,
-                        )
-                    )
-                } else {
-                    onError(
-                        CorePlatformException(
-                            code = "ADDRESS_EMPTY",
-                            message = "Address is empty"
-                        )
-                    )
+                    address = addresses.first()
                 }
             }
-
-        } else {
-            val addresses =
-                geoCoder.getFromLocation(latitude, longitude, 1) ?: listOf()
-            if (addresses.isNotEmpty()) {
-                val address = addresses.first()
-                onSuccess(
-                    AddressModel(
-                        country = address.countryName,
-                        adminArea = address.adminArea,
-                        subAdminArea = address.subAdminArea,
-                        locality = address.locality,
-                        subLocality = address.subLocality,
-                        postalCode = address.postalCode,
+            if (address != null) {
+                emitter.onNext(
+                    getAddress(
                         latitude = latitude,
                         longitude = longitude,
+                        address = address!!
                     )
                 )
+                emitter.onComplete()
             } else {
-                onError(CorePlatformException(code = "ADDRESS_EMPTY", message = "Address is empty"))
+                emitter.onError(
+                    CorePlatformException(
+                        code = "ADDRESS_EMPTY",
+                        message = "Address is empty"
+                    )
+                )
+                emitter.onComplete()
             }
         }
-
     }
 }

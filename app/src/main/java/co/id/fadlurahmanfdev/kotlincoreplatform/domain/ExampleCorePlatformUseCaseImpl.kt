@@ -4,10 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
-import co.id.fadlurahmanfdev.kotlin_core_platform.data.exception.CorePlatformException
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.AddressModel
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.CoordinateModel
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformRepository
+import io.reactivex.rxjava3.core.Observable
 
 class ExampleCorePlatformUseCaseImpl(
     private val platformRepository: CorePlatformRepository,
@@ -23,36 +23,21 @@ class ExampleCorePlatformUseCaseImpl(
     }
 
     override fun isLocationEnabled(context: Context): Boolean {
-        return isLocationPermissionGranted(context) && platformRepository.isLocationEnabled(context)
+        return isLocationPermissionGranted(context) && platformRepository.isLocationEnabled()
     }
 
-    override fun getCurrentLocation(
-        context: Context,
-        onSuccess: (CoordinateModel) -> Unit,
-        onError: (CorePlatformException) -> Unit
-    ) {
-        return platformRepository.requestAndForgetLocation(context, onSuccess, onError = onError)
+    override fun getCurrentLocation(): Observable<CoordinateModel> {
+        return platformRepository.requestCurrentCoordinate()
     }
 
 
-    override fun getAddress(
-        context: Context,
-        onSuccess: (AddressModel) -> Unit,
-        onError: (CorePlatformException) -> Unit
-    ) {
-        platformRepository.requestAndForgetLocation(
-            context,
-            onSuccess = { coordinate ->
-                platformRepository.getAddress(
-                    context,
-                    latitude = coordinate.latitude,
-                    longitude = coordinate.longitude,
-                    onSuccess = onSuccess,
-                    onError = onError,
-                )
-            },
-            onError = onError,
-        )
+    override fun getAddress(): Observable<AddressModel> {
+        return getCurrentLocation().flatMap { coordinate ->
+            platformRepository.getAddress(
+                latitude = coordinate.latitude,
+                longitude = coordinate.longitude
+            )
+        }
     }
 
 
