@@ -42,5 +42,21 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
-    implementation("com.google.android.gms:play-services-location:17.0.0")
+    implementation("io.reactivex.rxjava3:rxjava:3.1.8")
+    implementation("io.reactivex.rxjava3:rxandroid:3.0.2")
+    api("com.google.android.gms:play-services-location:21.2.0")
+}
+
+publishing {
+    publications {
+        register<MavenPublication>("release"){
+            groupId = "co.id.fadlurahmanfdev"
+            artifactId = "kotlin_core_platform"
+            version = "0.0.4"
+
+            afterEvaluate {
+                from(components["release"])
+            }
+        }
+    }
 }
