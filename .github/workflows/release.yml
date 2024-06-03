@@ -25,10 +25,10 @@ jobs:
           release_name: ${{ github.ref_name }}
           draft: false
           prerelease: false
-      - name: Sleep for 30 seconds
+      - name: Sleep for 60 seconds
         uses: jakejarvis/wait-action@master
         with:
-          time: '30s'
+          time: '60s'
       - name: Curl Tag Release Jitpack IO
         uses: wei/curl@master
         continue-on-error: true
