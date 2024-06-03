@@ -19,7 +19,8 @@ import co.id.fadlurahmanfdev.kotlin_core_platform.data.model.CoordinateModel
 import io.reactivex.rxjava3.core.Observable
 import java.util.Locale
 
-class CorePlatformRepositoryImpl(private val context: Context) : CorePlatformRepository {
+class CorePlatformLocationRepositoryImpl(private val context: Context) :
+    CorePlatformLocationRepository {
     private var locationManager: LocationManager =
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
@@ -43,21 +44,21 @@ class CorePlatformRepositoryImpl(private val context: Context) : CorePlatformRep
         )
     }
 
-    override fun isFineLocationEnabled(): Boolean {
+    override fun isFineLocationPermissionGranted(): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    override fun isCoarseLocationEnabled(): Boolean {
+    override fun isCoarseLocationPermissionGranted(): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_COARSE_LOCATION
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    override fun isLocationEnabled(): Boolean {
+    override fun isLocationServiceEnabled(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             locationManager.isLocationEnabled
         } else {
@@ -65,20 +66,23 @@ class CorePlatformRepositoryImpl(private val context: Context) : CorePlatformRep
         }
     }
 
-    override fun requestCurrentCoordinate(): Observable<CoordinateModel> {
+    override fun getCurrentCoordinate(): Observable<CoordinateModel> {
         var locationListenerCompat: LocationListenerCompat? = null
         return Observable.create { emitter ->
             try {
                 val lastKnownLocation =
                     locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
                 if (lastKnownLocation != null) {
-                    Log.d(CorePlatformRepositoryImpl::class.java.simpleName, "last known fetched")
+                    Log.d(
+                        CorePlatformLocationRepositoryImpl::class.java.simpleName,
+                        "last known fetched"
+                    )
                     emitter.onNext(getCoordinateModelFromLocation(lastKnownLocation))
                     emitter.onComplete()
                     return@create
                 }
                 Log.d(
-                    CorePlatformRepositoryImpl::class.java.simpleName,
+                    CorePlatformLocationRepositoryImpl::class.java.simpleName,
                     "last known is not fetched, request a new one"
                 )
 
@@ -108,7 +112,13 @@ class CorePlatformRepositoryImpl(private val context: Context) : CorePlatformRep
         }
     }
 
-    override fun getAddress(
+    override fun getCurrentAddress(): Observable<AddressModel> {
+        return getCurrentCoordinate().flatMap { coordinate ->
+            getAddressByCoordinate(latitude = coordinate.latitude, longitude = coordinate.longitude)
+        }
+    }
+
+    override fun getAddressByCoordinate(
         latitude: Double,
         longitude: Double,
     ): Observable<AddressModel> {

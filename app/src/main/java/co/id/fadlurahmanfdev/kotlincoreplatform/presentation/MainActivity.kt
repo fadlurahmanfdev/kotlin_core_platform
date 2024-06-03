@@ -10,7 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
-import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformRepositoryImpl
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformLocationRepositoryImpl
 import co.id.fadlurahmanfdev.kotlin_core_platform.domain.plugin.CorePlatformLocationManager
 import co.id.fadlurahmanfdev.kotlincoreplatform.R
 import co.id.fadlurahmanfdev.kotlincoreplatform.data.FeatureModel
@@ -71,7 +71,7 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
 
         viewModel = MainViewModel(
             exampleCorePlatformUseCase = ExampleCorePlatformUseCaseImpl(
-                platformRepository = CorePlatformRepositoryImpl(
+                platformRepository = CorePlatformLocationRepositoryImpl(
                     applicationContext,
                 )
             )
