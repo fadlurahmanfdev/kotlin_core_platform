@@ -1,6 +1,7 @@
 package co.id.fadlurahmanfdev.kotlincoreplatform.presentation
 
 import android.os.Bundle
+import android.util.Base64
 import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
@@ -11,14 +12,18 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformLocationRepositoryImpl
+import co.id.fadlurahmanfdev.kotlin_core_platform.domain.plugin.CorePlatformBiometricManager
 import co.id.fadlurahmanfdev.kotlin_core_platform.domain.plugin.CorePlatformLocationManager
 import co.id.fadlurahmanfdev.kotlincoreplatform.R
 import co.id.fadlurahmanfdev.kotlincoreplatform.data.FeatureModel
 import co.id.fadlurahmanfdev.kotlincoreplatform.domain.ExampleCorePlatformUseCaseImpl
+import java.nio.charset.Charset
+import javax.crypto.Cipher
 
 class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
     lateinit var viewModel: MainViewModel
     lateinit var corePlatformLocationManager: CorePlatformLocationManager
+    lateinit var corePlatformBiometricManager: CorePlatformBiometricManager
 
     private val features: List<FeatureModel> = listOf<FeatureModel>(
         FeatureModel(
@@ -51,6 +56,18 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
             desc = "Get Address",
             enum = "GET_ADDRESS"
         ),
+        FeatureModel(
+            featureIcon = R.drawable.baseline_developer_mode_24,
+            title = "Prompt Biometric",
+            desc = "Prompt Encrypt Secure Biometric",
+            enum = "PROMPT_ENCRYPT_SECURE_BIOMETRIC"
+        ),
+        FeatureModel(
+            featureIcon = R.drawable.baseline_developer_mode_24,
+            title = "Prompt Decrypt Biometric",
+            desc = "Prompt Decrypt Secure Biometric",
+            enum = "PROMPT_DECRYPT_SECURE_BIOMETRIC"
+        ),
     )
 
     private lateinit var rv: RecyclerView
@@ -68,6 +85,8 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
         }
         rv = findViewById<RecyclerView>(R.id.rv)
         corePlatformLocationManager = CorePlatformLocationManager(this)
+        corePlatformBiometricManager = CorePlatformBiometricManager()
+        corePlatformBiometricManager.initialize()
 
         viewModel = MainViewModel(
             exampleCorePlatformUseCase = ExampleCorePlatformUseCaseImpl(
@@ -97,6 +116,11 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
 
         }
 
+    private val plainText = "PASSW0RD"
+    private lateinit var encodedEncryptedPassword: String
+    private lateinit var encodedIvKey: String
+    private lateinit var ivKey: ByteArray
+
     override fun onClicked(item: FeatureModel) {
         when (item.enum) {
             "REQUEST_LOCATION_PERMISSION" -> {
@@ -120,29 +144,6 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
                         }
                     },
                 )
-
-//                val locationRequest = LocationRequest.Builder(Priority.PRIORITY_LOW_POWER, 1000)
-//
-//                    .build()
-//
-//                val builder = LocationSettingsRequest.Builder()
-//                    .addLocationRequest(locationRequest)
-//                    .setAlwaysShow(true)
-//
-//                val result =
-//                    LocationServices.getSettingsClient(this).checkLocationSettings(builder.build())
-//                result.addOnSuccessListener { response ->
-//                    println("MASUK RESPONSE: ${response.locationSettingsStates?.isLocationPresent}")
-//                    println("MASUK RESPONSE: ${response.locationSettingsStates?.isLocationUsable}")
-//                }.addOnFailureListener { exception ->
-//                    if(exception is ResolvableApiException){
-//                        println("MASUK EXCEPTION: ${exception.javaClass.simpleName}")
-//                        println("MASUK EXCEPTION: ${exception.message}")
-//                        val intentSenderRequest =
-//                            IntentSenderRequest.Builder(exception.resolution).build()
-//                        locationRequestLauncher.launch(intentSenderRequest)
-//                    }
-//                }
             }
 
             "CHECK_LOCATION_ENABLED" -> {
@@ -155,6 +156,49 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
 
             "GET_ADDRESS" -> {
                 viewModel.getAddress()
+            }
+
+            "PROMPT_ENCRYPT_SECURE_BIOMETRIC" -> {
+                corePlatformBiometricManager.promptEncrypt(
+                    this,
+                    title = "TES TITLE ENCRYPT",
+                    description = "DESC ENCRYPT",
+                    negativeText = "NEGATIVE",
+                    callBack = object : CorePlatformBiometricManager.CallBack {
+                        override fun onEncrypted(
+                            cipher: Cipher,
+                            encodedIvKey: String,
+                            ivKey: ByteArray
+                        ) {
+                            super.onEncrypted(cipher, encodedIvKey, ivKey)
+                            val encryptedPassword =
+                                cipher.doFinal(plainText.toByteArray())
+                            encodedEncryptedPassword =
+                                Base64.encodeToString(encryptedPassword, Base64.NO_WRAP)
+                            this@MainActivity.encodedIvKey = encodedIvKey
+                            this@MainActivity.ivKey = ivKey
+                            println("MASUK ENCODED ENCRYPTED PASSWORD: $encodedEncryptedPassword")
+                        }
+                    })
+            }
+
+            "PROMPT_DECRYPT_SECURE_BIOMETRIC" -> {
+                corePlatformBiometricManager.promptDecrypt(
+                    this,
+                    title = "TES TITLE DECRYPT",
+                    description = "DESC DECRYPT",
+                    negativeText = "NEGATIVE",
+                    encodedIvKey = encodedIvKey,
+                    ivKey = ivKey,
+                    callBack = object : CorePlatformBiometricManager.CallBack {
+                        override fun onDecrypted(cipher: Cipher) {
+                            super.onDecrypted(cipher)
+                            val decodedPassword =
+                                Base64.decode(encodedEncryptedPassword, Base64.NO_WRAP)
+                            val plainPassword = String(cipher.doFinal(decodedPassword))
+                            println("MASUK PLAIN PASSWORD: $plainPassword")
+                        }
+                    })
             }
         }
     }
