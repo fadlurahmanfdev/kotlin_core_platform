@@ -17,7 +17,6 @@ import co.id.fadlurahmanfdev.kotlin_core_platform.domain.plugin.CorePlatformLoca
 import co.id.fadlurahmanfdev.kotlincoreplatform.R
 import co.id.fadlurahmanfdev.kotlincoreplatform.data.FeatureModel
 import co.id.fadlurahmanfdev.kotlincoreplatform.domain.ExampleCorePlatformUseCaseImpl
-import java.nio.charset.Charset
 import javax.crypto.Cipher
 
 class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
@@ -86,7 +85,12 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
         rv = findViewById<RecyclerView>(R.id.rv)
         corePlatformLocationManager = CorePlatformLocationManager(this)
         corePlatformBiometricManager = CorePlatformBiometricManager()
-        corePlatformBiometricManager.initialize()
+        corePlatformBiometricManager.initialize(
+            this,
+            "example_core_platform_key"
+        )
+
+
 
         viewModel = MainViewModel(
             exampleCorePlatformUseCase = ExampleCorePlatformUseCaseImpl(
@@ -119,7 +123,6 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
     private val plainText = "PASSW0RD"
     private lateinit var encodedEncryptedPassword: String
     private lateinit var encodedIvKey: String
-    private lateinit var ivKey: ByteArray
 
     override fun onClicked(item: FeatureModel) {
         when (item.enum) {
@@ -160,23 +163,20 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
 
             "PROMPT_ENCRYPT_SECURE_BIOMETRIC" -> {
                 corePlatformBiometricManager.promptEncrypt(
-                    this,
                     title = "TES TITLE ENCRYPT",
                     description = "DESC ENCRYPT",
                     negativeText = "NEGATIVE",
                     callBack = object : CorePlatformBiometricManager.CallBack {
                         override fun onEncrypted(
                             cipher: Cipher,
-                            encodedIvKey: String,
-                            ivKey: ByteArray
+                            encodedIvKey: String
                         ) {
-                            super.onEncrypted(cipher, encodedIvKey, ivKey)
+                            super.onEncrypted(cipher, encodedIvKey)
                             val encryptedPassword =
                                 cipher.doFinal(plainText.toByteArray())
                             encodedEncryptedPassword =
                                 Base64.encodeToString(encryptedPassword, Base64.NO_WRAP)
                             this@MainActivity.encodedIvKey = encodedIvKey
-                            this@MainActivity.ivKey = ivKey
                             println("MASUK ENCODED ENCRYPTED PASSWORD: $encodedEncryptedPassword")
                         }
                     })
@@ -184,12 +184,10 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
 
             "PROMPT_DECRYPT_SECURE_BIOMETRIC" -> {
                 corePlatformBiometricManager.promptDecrypt(
-                    this,
                     title = "TES TITLE DECRYPT",
                     description = "DESC DECRYPT",
                     negativeText = "NEGATIVE",
                     encodedIvKey = encodedIvKey,
-                    ivKey = ivKey,
                     callBack = object : CorePlatformBiometricManager.CallBack {
                         override fun onDecrypted(cipher: Cipher) {
                             super.onDecrypted(cipher)
