@@ -167,11 +167,11 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
                     description = "DESC ENCRYPT",
                     negativeText = "NEGATIVE",
                     callBack = object : CorePlatformBiometricManager.CallBack {
-                        override fun onEncrypted(
+                        override fun onSuccessAuthenticateForEncrypt(
                             cipher: Cipher,
                             encodedIvKey: String
                         ) {
-                            super.onEncrypted(cipher, encodedIvKey)
+                            super.onSuccessAuthenticateForEncrypt(cipher, encodedIvKey)
                             val encryptedPassword =
                                 cipher.doFinal(plainText.toByteArray())
                             encodedEncryptedPassword =
@@ -189,8 +189,8 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
                     negativeText = "NEGATIVE",
                     encodedIvKey = encodedIvKey,
                     callBack = object : CorePlatformBiometricManager.CallBack {
-                        override fun onDecrypted(cipher: Cipher) {
-                            super.onDecrypted(cipher)
+                        override fun onSuccessAuthenticateForDecrypt(cipher: Cipher) {
+                            super.onSuccessAuthenticateForDecrypt(cipher)
                             val decodedPassword =
                                 Base64.decode(encodedEncryptedPassword, Base64.NO_WRAP)
                             val plainPassword = String(cipher.doFinal(decodedPassword))

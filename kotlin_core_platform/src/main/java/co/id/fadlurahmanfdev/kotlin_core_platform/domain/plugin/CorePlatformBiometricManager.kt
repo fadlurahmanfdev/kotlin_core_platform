@@ -12,6 +12,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.CanAuthenticateReason
 import java.security.KeyStore
 import java.util.concurrent.Executor
 import javax.crypto.Cipher
@@ -21,7 +22,6 @@ import javax.crypto.spec.IvParameterSpec
 
 class CorePlatformBiometricManager {
     private lateinit var executor: Executor
-    private lateinit var androidxBiometricPrompt: androidx.biometric.BiometricPrompt
     private var cancellationSignal: CancellationSignal? = null
     private lateinit var keyStoreAlias: String
     private lateinit var secretKey: SecretKey
@@ -104,6 +104,32 @@ class CorePlatformBiometricManager {
         secretKey = getOrCreateSecretKey()
     }
 
+    fun canAuthenticate(): Boolean {
+        return canAuthenticateWithReason() == CanAuthenticateReason.SUCCESS
+    }
+
+    fun canAuthenticateWithReason(): CanAuthenticateReason {
+        val biometricManager = androidx.biometric.BiometricManager.from(activity)
+        return when (biometricManager.canAuthenticate(androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL)) {
+            androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS ->
+                CanAuthenticateReason.SUCCESS
+
+            androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE ->
+                CanAuthenticateReason.NO_BIOMETRIC_AVAILABLE
+
+            androidx.biometric.BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE ->
+                CanAuthenticateReason.BIOMETRIC_UNAVAILABLE
+
+            androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
+                CanAuthenticateReason.NONE_ENROLLED
+            }
+
+            else -> {
+                CanAuthenticateReason.UNKNOWN
+            }
+        }
+    }
+
     @RequiresApi(Build.VERSION_CODES.P)
     private fun getBiometricPrompt(
         title: String,
@@ -181,10 +207,23 @@ class CorePlatformBiometricManager {
                             val currentCipher = result!!.cryptoObject!!.cipher!!
                             val encodedIvKey =
                                 Base64.encodeToString(currentCipher.iv, Base64.NO_WRAP)
-                            callBack?.onEncrypted(
+                            callBack?.onSuccessAuthenticateForEncrypt(
                                 cipher = cipher,
                                 encodedIvKey = encodedIvKey
                             )
+                        }
+
+                        override fun onAuthenticationFailed() {
+                            super.onAuthenticationFailed()
+                            callBack?.onFailedAuthenticate()
+                        }
+
+                        override fun onAuthenticationError(
+                            errorCode: Int,
+                            errString: CharSequence?
+                        ) {
+                            super.onAuthenticationError(errorCode, errString)
+                            callBack?.onErrorAuthenticate(errorCode, errString)
                         }
                     })
             }
@@ -196,7 +235,7 @@ class CorePlatformBiometricManager {
                     negativeText = negativeText
                 )
 
-                androidxBiometricPrompt = getAndroidXBiometricPrompt(
+                val biometricPrompt = getAndroidXBiometricPrompt(
                     executor = executor,
                     callBack = object :
                         androidx.biometric.BiometricPrompt.AuthenticationCallback() {
@@ -205,14 +244,27 @@ class CorePlatformBiometricManager {
                             val currentCipher = result.cryptoObject!!.cipher!!
                             val encodedIvKey =
                                 Base64.encodeToString(currentCipher.iv, Base64.NO_WRAP)
-                            callBack?.onEncrypted(
+                            callBack?.onSuccessAuthenticateForEncrypt(
                                 cipher = cipher,
                                 encodedIvKey = encodedIvKey
                             )
                         }
+
+                        override fun onAuthenticationFailed() {
+                            super.onAuthenticationFailed()
+                            callBack?.onFailedAuthenticate()
+                        }
+
+                        override fun onAuthenticationError(
+                            errorCode: Int,
+                            errString: CharSequence
+                        ) {
+                            super.onAuthenticationError(errorCode, errString)
+                            callBack?.onErrorAuthenticate(errorCode, errString)
+                        }
                     }
                 )
-                androidxBiometricPrompt.authenticate(
+                biometricPrompt.authenticate(
                     promptInfo,
                     androidx.biometric.BiometricPrompt.CryptoObject(cipher)
                 )
@@ -225,7 +277,22 @@ class CorePlatformBiometricManager {
         description: String,
         negativeText: String,
         encodedIvKey: String,
-        callBack: CallBack
+    ) {
+        return promptDecrypt(
+            title = title,
+            description = description,
+            negativeText = negativeText,
+            encodedIvKey = encodedIvKey,
+            callBack = null,
+        )
+    }
+
+    fun promptDecrypt(
+        title: String,
+        description: String,
+        negativeText: String,
+        encodedIvKey: String,
+        callBack: CallBack?
     ) {
         cancellationSignal = CancellationSignal()
         val ivKey = Base64.decode(encodedIvKey, Base64.NO_WRAP)
@@ -241,7 +308,7 @@ class CorePlatformBiometricManager {
                     executor = executor
                 ) { dialog, _ ->
                     dialog?.cancel()
-                    callBack.onCancel(cancellationSignal)
+                    callBack?.onCancel(cancellationSignal)
                 }
                 biometricPrompt.authenticate(
                     BiometricPrompt.CryptoObject(cipher),
@@ -251,7 +318,20 @@ class CorePlatformBiometricManager {
                         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
                             super.onAuthenticationSucceeded(result)
                             val currentCipher = result!!.cryptoObject!!.cipher!!
-                            callBack.onDecrypted(currentCipher)
+                            callBack?.onSuccessAuthenticateForDecrypt(currentCipher)
+                        }
+
+                        override fun onAuthenticationFailed() {
+                            super.onAuthenticationFailed()
+                            callBack?.onFailedAuthenticate()
+                        }
+
+                        override fun onAuthenticationError(
+                            errorCode: Int,
+                            errString: CharSequence?
+                        ) {
+                            super.onAuthenticationError(errorCode, errString)
+                            callBack?.onErrorAuthenticate(errorCode, errString)
                         }
                     },
                 )
@@ -264,18 +344,31 @@ class CorePlatformBiometricManager {
                     negativeText = negativeText
                 )
 
-                androidxBiometricPrompt = getAndroidXBiometricPrompt(
+                val biometricPrompt = getAndroidXBiometricPrompt(
                     executor = executor,
                     callBack = object :
                         androidx.biometric.BiometricPrompt.AuthenticationCallback() {
                         override fun onAuthenticationSucceeded(result: androidx.biometric.BiometricPrompt.AuthenticationResult) {
                             super.onAuthenticationSucceeded(result)
                             val currentCipher = result.cryptoObject!!.cipher!!
-                            callBack.onDecrypted(currentCipher)
+                            callBack?.onSuccessAuthenticateForDecrypt(currentCipher)
+                        }
+
+                        override fun onAuthenticationFailed() {
+                            super.onAuthenticationFailed()
+                            callBack?.onFailedAuthenticate()
+                        }
+
+                        override fun onAuthenticationError(
+                            errorCode: Int,
+                            errString: CharSequence
+                        ) {
+                            super.onAuthenticationError(errorCode, errString)
+                            callBack?.onErrorAuthenticate(errorCode, errString)
                         }
                     }
                 )
-                androidxBiometricPrompt.authenticate(
+                biometricPrompt.authenticate(
                     promptInfo,
                     androidx.biometric.BiometricPrompt.CryptoObject(cipher)
                 )
@@ -288,7 +381,10 @@ class CorePlatformBiometricManager {
             cancellationSignal?.cancel()
         }
 
-        fun onEncrypted(cipher: Cipher, encodedIvKey: String) {}
-        fun onDecrypted(cipher: Cipher) {}
+        fun onSuccessAuthenticateForEncrypt(cipher: Cipher, encodedIvKey: String) {}
+        fun onSuccessAuthenticateForDecrypt(cipher: Cipher) {}
+        fun onFailedAuthenticate() {}
+
+        fun onErrorAuthenticate(errorCode: Int, errString: CharSequence?) {}
     }
 }
