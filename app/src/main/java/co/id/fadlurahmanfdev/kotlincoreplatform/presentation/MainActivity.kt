@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.CorePlatformBiometricCallBack
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformLocationRepositoryImpl
 import co.id.fadlurahmanfdev.kotlin_core_platform.domain.plugin.CorePlatformBiometricManager
 import co.id.fadlurahmanfdev.kotlin_core_platform.domain.plugin.CorePlatformLocationManager
@@ -90,8 +91,6 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
             "example_core_platform_key"
         )
 
-
-
         viewModel = MainViewModel(
             exampleCorePlatformUseCase = ExampleCorePlatformUseCaseImpl(
                 platformRepository = CorePlatformLocationRepositoryImpl(
@@ -166,7 +165,7 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
                     title = "TES TITLE ENCRYPT",
                     description = "DESC ENCRYPT",
                     negativeText = "NEGATIVE",
-                    callBack = object : CorePlatformBiometricManager.CallBack {
+                    callBack = object : CorePlatformBiometricCallBack {
                         override fun onSuccessAuthenticateForEncrypt(
                             cipher: Cipher,
                             encodedIvKey: String
@@ -188,7 +187,7 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
                     description = "DESC DECRYPT",
                     negativeText = "NEGATIVE",
                     encodedIvKey = encodedIvKey,
-                    callBack = object : CorePlatformBiometricManager.CallBack {
+                    callBack = object : CorePlatformBiometricCallBack {
                         override fun onSuccessAuthenticateForDecrypt(cipher: Cipher) {
                             super.onSuccessAuthenticateForDecrypt(cipher)
                             val decodedPassword =

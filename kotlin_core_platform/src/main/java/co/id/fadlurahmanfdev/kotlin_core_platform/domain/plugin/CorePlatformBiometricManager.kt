@@ -7,11 +7,11 @@ import android.os.Build
 import android.os.CancellationSignal
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import android.util.Base64
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.CorePlatformBiometricCallBack
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformBiometricRepository
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformBiometricRepositoryImpl
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.CanAuthenticateReasonType
@@ -20,7 +20,6 @@ import java.util.concurrent.Executor
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
-import javax.crypto.spec.IvParameterSpec
 
 class CorePlatformBiometricManager {
     private val corePlatformBiometricRepository: CorePlatformBiometricRepository =
@@ -180,97 +179,20 @@ class CorePlatformBiometricManager {
         title: String,
         description: String,
         negativeText: String,
-        callBack: CallBack? = null,
+        callBack: CorePlatformBiometricCallBack? = null,
     ) {
+        cancellationSignal?.cancel()
+        cancellationSignal = null
         cancellationSignal = CancellationSignal()
-        val cipher = getCipher()
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey)
-        when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> {
-                val biometricPrompt = getBiometricPrompt(
-                    activity = activity,
-                    title = title,
-                    description = description,
-                    negativeText = negativeText,
-                    executor = executor
-                ) { dialog, _ ->
-                    dialog?.cancel()
-                    callBack?.onCancel(cancellationSignal)
-                }
-                biometricPrompt.authenticate(
-                    BiometricPrompt.CryptoObject(cipher),
-                    cancellationSignal!!,
-                    executor,
-                    object : BiometricPrompt.AuthenticationCallback() {
-                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
-                            super.onAuthenticationSucceeded(result)
-                            val currentCipher = result!!.cryptoObject!!.cipher!!
-                            val encodedIvKey =
-                                Base64.encodeToString(currentCipher.iv, Base64.NO_WRAP)
-                            callBack?.onSuccessAuthenticateForEncrypt(
-                                cipher = cipher,
-                                encodedIvKey = encodedIvKey
-                            )
-                        }
-
-                        override fun onAuthenticationFailed() {
-                            super.onAuthenticationFailed()
-                            callBack?.onFailedAuthenticate()
-                        }
-
-                        override fun onAuthenticationError(
-                            errorCode: Int,
-                            errString: CharSequence?
-                        ) {
-                            super.onAuthenticationError(errorCode, errString)
-                            callBack?.onErrorAuthenticate(errorCode, errString)
-                        }
-                    })
-            }
-
-            else -> {
-                val promptInfo = getAndroidXPromptInfo(
-                    title = title,
-                    description = description,
-                    negativeText = negativeText
-                )
-
-                val biometricPrompt = getAndroidXBiometricPrompt(
-                    fragmentActivity = activity as FragmentActivity,
-                    executor = executor,
-                    callBack = object :
-                        androidx.biometric.BiometricPrompt.AuthenticationCallback() {
-                        override fun onAuthenticationSucceeded(result: androidx.biometric.BiometricPrompt.AuthenticationResult) {
-                            super.onAuthenticationSucceeded(result)
-                            val currentCipher = result.cryptoObject!!.cipher!!
-                            val encodedIvKey =
-                                Base64.encodeToString(currentCipher.iv, Base64.NO_WRAP)
-                            callBack?.onSuccessAuthenticateForEncrypt(
-                                cipher = cipher,
-                                encodedIvKey = encodedIvKey
-                            )
-                        }
-
-                        override fun onAuthenticationFailed() {
-                            super.onAuthenticationFailed()
-                            callBack?.onFailedAuthenticate()
-                        }
-
-                        override fun onAuthenticationError(
-                            errorCode: Int,
-                            errString: CharSequence
-                        ) {
-                            super.onAuthenticationError(errorCode, errString)
-                            callBack?.onErrorAuthenticate(errorCode, errString)
-                        }
-                    }
-                )
-                biometricPrompt.authenticate(
-                    promptInfo,
-                    androidx.biometric.BiometricPrompt.CryptoObject(cipher)
-                )
-            }
-        }
+        return corePlatformBiometricRepository.promptEncrypt(
+            activity = activity,
+            cancellationSignal = cancellationSignal!!,
+            keystoreAlias = keyStoreAlias,
+            title = title,
+            description = description,
+            negativeText = negativeText,
+            callBack = callBack,
+        )
     }
 
     fun promptDecrypt(
@@ -293,101 +215,20 @@ class CorePlatformBiometricManager {
         description: String,
         negativeText: String,
         encodedIvKey: String,
-        callBack: CallBack?
+        callBack: CorePlatformBiometricCallBack?
     ) {
+        cancellationSignal?.cancel()
+        cancellationSignal = null
         cancellationSignal = CancellationSignal()
-        val ivKey = Base64.decode(encodedIvKey, Base64.NO_WRAP)
-        val ivSpec = IvParameterSpec(ivKey)
-        val cipher = getCipher()
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
-        when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> {
-                val biometricPrompt = getBiometricPrompt(
-                    activity = activity,
-                    title = title,
-                    description = description,
-                    negativeText = negativeText,
-                    executor = executor
-                ) { dialog, _ ->
-                    dialog?.cancel()
-                    callBack?.onCancel(cancellationSignal)
-                }
-                biometricPrompt.authenticate(
-                    BiometricPrompt.CryptoObject(cipher),
-                    cancellationSignal!!,
-                    executor,
-                    object : BiometricPrompt.AuthenticationCallback() {
-                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
-                            super.onAuthenticationSucceeded(result)
-                            val currentCipher = result!!.cryptoObject!!.cipher!!
-                            callBack?.onSuccessAuthenticateForDecrypt(currentCipher)
-                        }
-
-                        override fun onAuthenticationFailed() {
-                            super.onAuthenticationFailed()
-                            callBack?.onFailedAuthenticate()
-                        }
-
-                        override fun onAuthenticationError(
-                            errorCode: Int,
-                            errString: CharSequence?
-                        ) {
-                            super.onAuthenticationError(errorCode, errString)
-                            callBack?.onErrorAuthenticate(errorCode, errString)
-                        }
-                    },
-                )
-            }
-
-            else -> {
-                val promptInfo = getAndroidXPromptInfo(
-                    title = title,
-                    description = description,
-                    negativeText = negativeText
-                )
-
-                val biometricPrompt = getAndroidXBiometricPrompt(
-                    fragmentActivity = activity as FragmentActivity,
-                    executor = executor,
-                    callBack = object :
-                        androidx.biometric.BiometricPrompt.AuthenticationCallback() {
-                        override fun onAuthenticationSucceeded(result: androidx.biometric.BiometricPrompt.AuthenticationResult) {
-                            super.onAuthenticationSucceeded(result)
-                            val currentCipher = result.cryptoObject!!.cipher!!
-                            callBack?.onSuccessAuthenticateForDecrypt(currentCipher)
-                        }
-
-                        override fun onAuthenticationFailed() {
-                            super.onAuthenticationFailed()
-                            callBack?.onFailedAuthenticate()
-                        }
-
-                        override fun onAuthenticationError(
-                            errorCode: Int,
-                            errString: CharSequence
-                        ) {
-                            super.onAuthenticationError(errorCode, errString)
-                            callBack?.onErrorAuthenticate(errorCode, errString)
-                        }
-                    }
-                )
-                biometricPrompt.authenticate(
-                    promptInfo,
-                    androidx.biometric.BiometricPrompt.CryptoObject(cipher)
-                )
-            }
-        }
-    }
-
-    interface CallBack {
-        fun onCancel(cancellationSignal: CancellationSignal?) {
-            cancellationSignal?.cancel()
-        }
-
-        fun onSuccessAuthenticateForEncrypt(cipher: Cipher, encodedIvKey: String) {}
-        fun onSuccessAuthenticateForDecrypt(cipher: Cipher) {}
-        fun onFailedAuthenticate() {}
-
-        fun onErrorAuthenticate(errorCode: Int, errString: CharSequence?) {}
+        return corePlatformBiometricRepository.promptDecrypt(
+            activity = activity,
+            cancellationSignal = cancellationSignal!!,
+            keystoreAlias = keyStoreAlias,
+            encodedIvKey = encodedIvKey,
+            title = title,
+            description = description,
+            negativeText = negativeText,
+            callBack = callBack
+        )
     }
 }

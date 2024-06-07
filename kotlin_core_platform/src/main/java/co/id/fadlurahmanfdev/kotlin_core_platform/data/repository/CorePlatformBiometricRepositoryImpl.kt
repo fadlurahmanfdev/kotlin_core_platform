@@ -41,24 +41,18 @@ class CorePlatformBiometricRepositoryImpl : CorePlatformBiometricRepository {
         }
     }
 
-    fun promptEncrypt(
+    override fun promptEncrypt(
         activity: Activity,
         cancellationSignal: CancellationSignal,
         keystoreAlias: String,
         title: String,
         description: String,
         negativeText: String,
-        callBack: CorePlatformBiometricCallBack? = null,
+        callBack: CorePlatformBiometricCallBack?,
     ) {
         val executor = ContextCompat.getMainExecutor(activity)
         val cipher = CorePlatformBiometricManager.getCipher()
-        val secretKey: SecretKey
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val keySpec = CorePlatformBiometricManager.generateKeyGenParameterSpec(keystoreAlias)
-            secretKey = CorePlatformBiometricManager.generateSecretKey(keySpec)
-        } else {
-            secretKey = CorePlatformBiometricManager.generateSecretKey()
-        }
+        val secretKey: SecretKey = CorePlatformBiometricManager.getOrCreateSecretKey(keystoreAlias)
         cipher.init(Cipher.ENCRYPT_MODE, secretKey)
         when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> {
@@ -150,25 +144,19 @@ class CorePlatformBiometricRepositoryImpl : CorePlatformBiometricRepository {
         }
     }
 
-    fun promptDecrypt(
+    override fun promptDecrypt(
         activity: Activity,
         cancellationSignal: CancellationSignal,
         keystoreAlias: String,
-        encodedIvKey:String,
+        encodedIvKey: String,
         title: String,
         description: String,
         negativeText: String,
-        callBack: CorePlatformBiometricCallBack? = null,
-    ){
+        callBack: CorePlatformBiometricCallBack?,
+    ) {
         val executor = ContextCompat.getMainExecutor(activity)
         val cipher = CorePlatformBiometricManager.getCipher()
-        val secretKey: SecretKey
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val keySpec = CorePlatformBiometricManager.generateKeyGenParameterSpec(keystoreAlias)
-            secretKey = CorePlatformBiometricManager.generateSecretKey(keySpec)
-        } else {
-            secretKey = CorePlatformBiometricManager.generateSecretKey()
-        }
+        val secretKey: SecretKey = CorePlatformBiometricManager.getOrCreateSecretKey(keystoreAlias)
         val ivKey = Base64.decode(encodedIvKey, Base64.NO_WRAP)
         val ivSpec = IvParameterSpec(ivKey)
         cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
@@ -181,7 +169,10 @@ class CorePlatformBiometricRepositoryImpl : CorePlatformBiometricRepository {
                     negativeText = negativeText,
                     executor = executor
                 ) { dialog, _ ->
-                    callBack?.onCancel(dialogInterface = dialog, cancellationSignal = cancellationSignal)
+                    callBack?.onCancel(
+                        dialogInterface = dialog,
+                        cancellationSignal = cancellationSignal
+                    )
                 }
                 biometricPrompt.authenticate(
                     BiometricPrompt.CryptoObject(cipher),
