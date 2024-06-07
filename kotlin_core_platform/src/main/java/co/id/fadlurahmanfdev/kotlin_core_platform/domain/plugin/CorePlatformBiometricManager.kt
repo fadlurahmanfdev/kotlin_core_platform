@@ -12,7 +12,9 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.CanAuthenticateReason
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformBiometricRepository
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformBiometricRepositoryImpl
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.CanAuthenticateReasonType
 import java.security.KeyStore
 import java.util.concurrent.Executor
 import javax.crypto.Cipher
@@ -21,79 +23,128 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.IvParameterSpec
 
 class CorePlatformBiometricManager {
+    private val corePlatformBiometricRepository: CorePlatformBiometricRepository =
+        CorePlatformBiometricRepositoryImpl()
     private lateinit var executor: Executor
     private var cancellationSignal: CancellationSignal? = null
     private lateinit var keyStoreAlias: String
     private lateinit var secretKey: SecretKey
     private lateinit var activity: Activity
 
-    @RequiresApi(Build.VERSION_CODES.M)
-    private fun generateKeyGenParameterSpec(keyStoreAlias: String): KeyGenParameterSpec {
-        return KeyGenParameterSpec.Builder(
-            keyStoreAlias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-        ).apply {
-            setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-            setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
-            setUserAuthenticationRequired(true)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                setInvalidatedByBiometricEnrollment(true)
+    companion object {
+
+        fun getCipher(): Cipher {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                Cipher.getInstance(
+                    KeyProperties.KEY_ALGORITHM_AES + "/"
+                            + KeyProperties.BLOCK_MODE_CBC + "/"
+                            + KeyProperties.ENCRYPTION_PADDING_PKCS7
+                )
+            } else {
+                Cipher.getInstance("AES/CBC/PKCS7Padding")
             }
-        }.build()
-    }
-
-    @RequiresApi(Build.VERSION_CODES.M)
-    private fun generateSecretKey(keyGenParameterSpec: KeyGenParameterSpec): SecretKey {
-        val keyGenerator = KeyGenerator.getInstance(
-            KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore"
-        )
-        keyGenerator.init(keyGenParameterSpec)
-        return keyGenerator.generateKey()
-    }
-
-    private fun generateSecretKey(): SecretKey {
-        val keyGenerator = KeyGenerator.getInstance("AES")
-        keyGenerator.init(256)
-        return keyGenerator.generateKey()
-    }
-
-    private fun getOrCreateSecretKey(): SecretKey {
-        val keyStore = KeyStore.getInstance("AndroidKeyStore")
-        keyStore.load(null)
-        val existingSecretKey = keyStore.getKey(keyStoreAlias, null) as SecretKey?
-        existingSecretKey?.let {
-            Log.d(
-                CorePlatformBiometricManager::class.java.simpleName,
-                "fetched existing secret key $keyStoreAlias"
-            )
-            return it
         }
 
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val key = generateSecretKey(generateKeyGenParameterSpec(keyStoreAlias))
-            Log.d(
-                CorePlatformBiometricManager::class.java.simpleName,
-                "successfully generated secret key"
-            )
-            key
-        } else {
-            val key = generateSecretKey()
-            Log.d(
-                CorePlatformBiometricManager::class.java.simpleName,
-                "successfully generated secret key"
-            )
-            key
+        @RequiresApi(Build.VERSION_CODES.M)
+        fun generateKeyGenParameterSpec(keyStoreAlias: String): KeyGenParameterSpec {
+            return KeyGenParameterSpec.Builder(
+                keyStoreAlias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+            ).apply {
+                setBlockModes(KeyProperties.BLOCK_MODE_CBC)
+                setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
+                setUserAuthenticationRequired(true)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    setInvalidatedByBiometricEnrollment(true)
+                }
+            }.build()
         }
-    }
 
-    private fun getCipher(): Cipher {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Cipher.getInstance(
-                KeyProperties.KEY_ALGORITHM_AES + "/"
-                        + KeyProperties.BLOCK_MODE_CBC + "/"
-                        + KeyProperties.ENCRYPTION_PADDING_PKCS7
+        @RequiresApi(Build.VERSION_CODES.M)
+        fun generateSecretKey(keyGenParameterSpec: KeyGenParameterSpec): SecretKey {
+            val keyGenerator = KeyGenerator.getInstance(
+                KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore"
             )
-        } else {
-            Cipher.getInstance("AES/CBC/PKCS7Padding")
+            keyGenerator.init(keyGenParameterSpec)
+            return keyGenerator.generateKey()
+        }
+
+        fun generateSecretKey(): SecretKey {
+            val keyGenerator = KeyGenerator.getInstance("AES")
+            keyGenerator.init(256)
+            return keyGenerator.generateKey()
+        }
+
+        fun getOrCreateSecretKey(keyStoreAlias: String): SecretKey {
+            val keyStore = KeyStore.getInstance("AndroidKeyStore")
+            keyStore.load(null)
+            val existingSecretKey = keyStore.getKey(keyStoreAlias, null) as SecretKey?
+            existingSecretKey?.let {
+                Log.d(
+                    CorePlatformBiometricManager::class.java.simpleName,
+                    "fetched existing secret key $keyStoreAlias"
+                )
+                return it
+            }
+
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val key = generateSecretKey(generateKeyGenParameterSpec(keyStoreAlias))
+                Log.d(
+                    CorePlatformBiometricManager::class.java.simpleName,
+                    "successfully generated secret key"
+                )
+                key
+            } else {
+                val key = generateSecretKey()
+                Log.d(
+                    CorePlatformBiometricManager::class.java.simpleName,
+                    "successfully generated secret key"
+                )
+                key
+            }
+        }
+
+        @RequiresApi(Build.VERSION_CODES.P)
+        fun getBiometricPrompt(
+            activity: Activity,
+            title: String,
+            description: String,
+            negativeText: String,
+            executor: Executor,
+            listener: OnClickListener,
+        ): BiometricPrompt {
+            return BiometricPrompt.Builder(activity).setTitle(title).setDescription(description)
+                .setNegativeButton(negativeText, executor, listener)
+                .build()
+        }
+
+        fun getAndroidXPromptInfo(
+            title: String,
+            description: String,
+            negativeText: String,
+        ): androidx.biometric.BiometricPrompt.PromptInfo {
+            return androidx.biometric.BiometricPrompt.PromptInfo.Builder().setTitle(title)
+                .setDescription(description).setNegativeButtonText(negativeText)
+                .build()
+        }
+
+        fun getAndroidXBiometricPrompt(
+            fragmentActivity: FragmentActivity,
+            executor: Executor,
+            callBack: androidx.biometric.BiometricPrompt.AuthenticationCallback,
+        ): androidx.biometric.BiometricPrompt {
+            return androidx.biometric.BiometricPrompt(
+                fragmentActivity,
+                executor,
+                callBack,
+            )
+        }
+
+        fun encrypt(): String? {
+            return ""
+        }
+
+        fun decrypt(): String? {
+            return ""
         }
     }
 
@@ -101,67 +152,15 @@ class CorePlatformBiometricManager {
         this.keyStoreAlias = keyStoreAlias
         this.activity = activity
         executor = ContextCompat.getMainExecutor(this.activity)
-        secretKey = getOrCreateSecretKey()
+        secretKey = getOrCreateSecretKey(keyStoreAlias)
     }
 
     fun canAuthenticate(): Boolean {
-        return canAuthenticateWithReason() == CanAuthenticateReason.SUCCESS
+        return corePlatformBiometricRepository.canAuthenticate(activity)
     }
 
-    fun canAuthenticateWithReason(): CanAuthenticateReason {
-        val biometricManager = androidx.biometric.BiometricManager.from(activity)
-        return when (biometricManager.canAuthenticate(androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL)) {
-            androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS ->
-                CanAuthenticateReason.SUCCESS
-
-            androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE ->
-                CanAuthenticateReason.NO_BIOMETRIC_AVAILABLE
-
-            androidx.biometric.BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE ->
-                CanAuthenticateReason.BIOMETRIC_UNAVAILABLE
-
-            androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
-                CanAuthenticateReason.NONE_ENROLLED
-            }
-
-            else -> {
-                CanAuthenticateReason.UNKNOWN
-            }
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.P)
-    private fun getBiometricPrompt(
-        title: String,
-        description: String,
-        negativeText: String,
-        executor: Executor,
-        listener: OnClickListener,
-    ): BiometricPrompt {
-        return BiometricPrompt.Builder(activity).setTitle(title).setDescription(description)
-            .setNegativeButton(negativeText, executor, listener)
-            .build()
-    }
-
-    private fun getAndroidXPromptInfo(
-        title: String,
-        description: String,
-        negativeText: String,
-    ): androidx.biometric.BiometricPrompt.PromptInfo {
-        return androidx.biometric.BiometricPrompt.PromptInfo.Builder().setTitle(title)
-            .setDescription(description).setNegativeButtonText(negativeText)
-            .build()
-    }
-
-    private fun getAndroidXBiometricPrompt(
-        executor: Executor,
-        callBack: androidx.biometric.BiometricPrompt.AuthenticationCallback,
-    ): androidx.biometric.BiometricPrompt {
-        return androidx.biometric.BiometricPrompt(
-            activity as FragmentActivity,
-            executor,
-            callBack,
-        )
+    fun canAuthenticateWithReason(): CanAuthenticateReasonType {
+        return corePlatformBiometricRepository.canAuthenticateWithReason(activity)
     }
 
     fun promptEncrypt(
@@ -189,6 +188,7 @@ class CorePlatformBiometricManager {
         when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> {
                 val biometricPrompt = getBiometricPrompt(
+                    activity = activity,
                     title = title,
                     description = description,
                     negativeText = negativeText,
@@ -236,6 +236,7 @@ class CorePlatformBiometricManager {
                 )
 
                 val biometricPrompt = getAndroidXBiometricPrompt(
+                    fragmentActivity = activity as FragmentActivity,
                     executor = executor,
                     callBack = object :
                         androidx.biometric.BiometricPrompt.AuthenticationCallback() {
@@ -302,6 +303,7 @@ class CorePlatformBiometricManager {
         when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> {
                 val biometricPrompt = getBiometricPrompt(
+                    activity = activity,
                     title = title,
                     description = description,
                     negativeText = negativeText,
@@ -345,6 +347,7 @@ class CorePlatformBiometricManager {
                 )
 
                 val biometricPrompt = getAndroidXBiometricPrompt(
+                    fragmentActivity = activity as FragmentActivity,
                     executor = executor,
                     callBack = object :
                         androidx.biometric.BiometricPrompt.AuthenticationCallback() {
