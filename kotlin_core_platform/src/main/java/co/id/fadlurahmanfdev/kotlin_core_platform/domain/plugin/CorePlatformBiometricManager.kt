@@ -2,6 +2,7 @@ package co.id.fadlurahmanfdev.kotlin_core_platform.domain.plugin
 
 import android.app.Activity
 import android.content.DialogInterface.OnClickListener
+import android.hardware.biometrics.BiometricManager.Authenticators
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Build
 import android.os.CancellationSignal
@@ -11,7 +12,8 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
-import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.CorePlatformBiometricCallBack
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.BiometricCallBack
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.CryptoBiometricCallBack
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformBiometricRepository
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformBiometricRepositoryImpl
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.CanAuthenticateReasonType
@@ -80,7 +82,7 @@ class CorePlatformBiometricManager {
             existingSecretKey?.let {
                 Log.d(
                     CorePlatformBiometricManager::class.java.simpleName,
-                    "fetched existing secret key $keyStoreAlias"
+                    "fetched existing secret key: $keyStoreAlias"
                 )
                 return it
             }
@@ -89,14 +91,14 @@ class CorePlatformBiometricManager {
                 val key = generateSecretKey(generateKeyGenParameterSpec(keyStoreAlias))
                 Log.d(
                     CorePlatformBiometricManager::class.java.simpleName,
-                    "successfully generated secret key"
+                    "successfully generated secret key: $keyStoreAlias"
                 )
                 key
             } else {
                 val key = generateSecretKey()
                 Log.d(
                     CorePlatformBiometricManager::class.java.simpleName,
-                    "successfully generated secret key"
+                    "successfully generated secret key: $keyStoreAlias"
                 )
                 key
             }
@@ -112,8 +114,30 @@ class CorePlatformBiometricManager {
             listener: OnClickListener,
         ): BiometricPrompt {
             return BiometricPrompt.Builder(activity).setTitle(title).setDescription(description)
-                .setNegativeButton(negativeText, executor, listener)
-                .build()
+                .apply {
+                    setNegativeButton(negativeText, executor, listener)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        setAllowedAuthenticators(Authenticators.BIOMETRIC_STRONG or Authenticators.BIOMETRIC_WEAK)
+                    }
+                }.build()
+        }
+
+        @RequiresApi(Build.VERSION_CODES.P)
+        fun getCryptoBiometricPrompt(
+            activity: Activity,
+            title: String,
+            description: String,
+            negativeText: String,
+            executor: Executor,
+            listener: OnClickListener,
+        ): BiometricPrompt {
+            return BiometricPrompt.Builder(activity).setTitle(title).setDescription(description)
+                .apply {
+                    setNegativeButton(negativeText, executor, listener)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        setAllowedAuthenticators(Authenticators.BIOMETRIC_STRONG)
+                    }
+                }.build()
         }
 
         fun getAndroidXPromptInfo(
@@ -179,7 +203,7 @@ class CorePlatformBiometricManager {
         title: String,
         description: String,
         negativeText: String,
-        callBack: CorePlatformBiometricCallBack? = null,
+        callBack: CryptoBiometricCallBack? = null,
     ) {
         cancellationSignal?.cancel()
         cancellationSignal = null
@@ -215,7 +239,7 @@ class CorePlatformBiometricManager {
         description: String,
         negativeText: String,
         encodedIvKey: String,
-        callBack: CorePlatformBiometricCallBack?
+        callBack: CryptoBiometricCallBack?
     ) {
         cancellationSignal?.cancel()
         cancellationSignal = null
@@ -229,6 +253,41 @@ class CorePlatformBiometricManager {
             description = description,
             negativeText = negativeText,
             callBack = callBack
+        )
+    }
+
+    fun prompt(
+        activity: Activity,
+        title: String,
+        description: String,
+        negativeText: String,
+    ) {
+        return prompt(
+            activity = activity,
+            title = title,
+            description = description,
+            negativeText = negativeText,
+            callBack = null
+        )
+    }
+
+    fun prompt(
+        activity: Activity,
+        title: String,
+        description: String,
+        negativeText: String,
+        callBack: BiometricCallBack?
+    ) {
+        cancellationSignal?.cancel()
+        cancellationSignal = null
+        cancellationSignal = CancellationSignal()
+        return corePlatformBiometricRepository.prompt(
+            activity = activity,
+            cancellationSignal = cancellationSignal!!,
+            title = title,
+            description = description,
+            negativeText = negativeText,
+            callBack = callBack,
         )
     }
 }

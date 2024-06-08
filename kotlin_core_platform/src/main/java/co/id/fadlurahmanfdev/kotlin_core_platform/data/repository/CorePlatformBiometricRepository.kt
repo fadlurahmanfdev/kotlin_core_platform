@@ -2,7 +2,8 @@ package co.id.fadlurahmanfdev.kotlin_core_platform.data.repository
 
 import android.app.Activity
 import android.os.CancellationSignal
-import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.CorePlatformBiometricCallBack
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.BiometricCallBack
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.CryptoBiometricCallBack
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.CanAuthenticateReasonType
 
 interface CorePlatformBiometricRepository {
@@ -16,7 +17,7 @@ interface CorePlatformBiometricRepository {
         title: String,
         description: String,
         negativeText: String,
-        callBack: CorePlatformBiometricCallBack? = null,
+        callBack: CryptoBiometricCallBack? = null,
     )
 
     fun promptDecrypt(
@@ -27,6 +28,15 @@ interface CorePlatformBiometricRepository {
         title: String,
         description: String,
         negativeText: String,
-        callBack: CorePlatformBiometricCallBack? = null,
+        callBack: CryptoBiometricCallBack? = null,
+    )
+
+    fun prompt(
+        activity: Activity,
+        cancellationSignal: CancellationSignal,
+        title: String,
+        description: String,
+        negativeText: String,
+        callBack: BiometricCallBack?,
     )
 }
