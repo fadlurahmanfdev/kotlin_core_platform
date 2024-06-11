@@ -4,6 +4,7 @@ import android.app.Activity
 import android.os.CancellationSignal
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.BiometricCallBack
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.CryptoBiometricCallBack
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.BiometricType
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.CanAuthenticateReasonType
 
 interface CorePlatformBiometricRepository {
@@ -33,6 +34,7 @@ interface CorePlatformBiometricRepository {
 
     fun prompt(
         activity: Activity,
+        type: BiometricType,
         cancellationSignal: CancellationSignal,
         title: String,
         description: String,

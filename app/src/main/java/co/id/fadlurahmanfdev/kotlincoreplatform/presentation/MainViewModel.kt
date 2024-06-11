@@ -27,7 +27,7 @@ class MainViewModel(
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(
                 { coordinate ->
-                    println("COORDINATE MODEL: $coordinate")
+                    println("COORDINATE MODEL: ${coordinate.copy(latitude = 123456.0, longitude = 123456.0)}")
                 },
                 {
                     println("ERROR COORDINATE: $it")

@@ -16,6 +16,8 @@ import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.BiometricCallBac
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.CryptoBiometricCallBack
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformBiometricRepository
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformBiometricRepositoryImpl
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.BiometricType
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.BiometricType.*
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.CanAuthenticateReasonType
 import java.security.KeyStore
 import java.util.concurrent.Executor
@@ -107,6 +109,7 @@ class CorePlatformBiometricManager {
         @RequiresApi(Build.VERSION_CODES.P)
         fun getBiometricPrompt(
             activity: Activity,
+            type: BiometricType,
             title: String,
             description: String,
             negativeText: String,
@@ -115,9 +118,26 @@ class CorePlatformBiometricManager {
         ): BiometricPrompt {
             return BiometricPrompt.Builder(activity).setTitle(title).setDescription(description)
                 .apply {
-                    setNegativeButton(negativeText, executor, listener)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        setAllowedAuthenticators(Authenticators.BIOMETRIC_STRONG or Authenticators.BIOMETRIC_WEAK)
+                    when (type) {
+                        WEAK -> {
+                            setNegativeButton(negativeText, executor, listener)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                setAllowedAuthenticators(Authenticators.BIOMETRIC_WEAK)
+                            }
+                        }
+
+                        STRONG -> {
+                            setNegativeButton(negativeText, executor, listener)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                setAllowedAuthenticators(Authenticators.BIOMETRIC_STRONG)
+                            }
+                        }
+
+                        DEVICE_CREDENTIAL -> {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                setAllowedAuthenticators(Authenticators.DEVICE_CREDENTIAL)
+                            }
+                        }
                     }
                 }.build()
         }
@@ -258,12 +278,14 @@ class CorePlatformBiometricManager {
 
     fun prompt(
         activity: Activity,
+        type: BiometricType,
         title: String,
         description: String,
         negativeText: String,
     ) {
         return prompt(
             activity = activity,
+            type = type,
             title = title,
             description = description,
             negativeText = negativeText,
@@ -273,6 +295,7 @@ class CorePlatformBiometricManager {
 
     fun prompt(
         activity: Activity,
+        type: BiometricType,
         title: String,
         description: String,
         negativeText: String,
@@ -283,6 +306,7 @@ class CorePlatformBiometricManager {
         cancellationSignal = CancellationSignal()
         return corePlatformBiometricRepository.prompt(
             activity = activity,
+            type = type,
             cancellationSignal = cancellationSignal!!,
             title = title,
             description = description,

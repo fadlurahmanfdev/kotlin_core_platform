@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.BiometricCallBack
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.CryptoBiometricCallBack
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.BiometricType
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.type.CanAuthenticateReasonType
 import co.id.fadlurahmanfdev.kotlin_core_platform.domain.plugin.CorePlatformBiometricManager
 import javax.crypto.Cipher
@@ -243,6 +244,7 @@ class CorePlatformBiometricRepositoryImpl : CorePlatformBiometricRepository {
     }
     override fun prompt(
         activity: Activity,
+        type: BiometricType,
         cancellationSignal: CancellationSignal,
         title: String,
         description: String,
@@ -254,6 +256,7 @@ class CorePlatformBiometricRepositoryImpl : CorePlatformBiometricRepository {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> {
                 val biometricPrompt = CorePlatformBiometricManager.getBiometricPrompt(
                     activity = activity,
+                    type = type,
                     title = title,
                     description = description,
                     negativeText = negativeText,
