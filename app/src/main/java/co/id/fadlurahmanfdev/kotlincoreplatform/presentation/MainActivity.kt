@@ -11,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.BiometricCallBack
+import co.id.fadlurahmanfdev.kotlin_core_platform.data.callback.CryptoBiometricCallBack
 import co.id.fadlurahmanfdev.kotlin_core_platform.data.repository.CorePlatformLocationRepositoryImpl
 import co.id.fadlurahmanfdev.kotlin_core_platform.domain.plugin.CorePlatformBiometricManager
 import co.id.fadlurahmanfdev.kotlin_core_platform.domain.plugin.CorePlatformLocationManager
@@ -58,6 +60,12 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
         FeatureModel(
             featureIcon = R.drawable.baseline_developer_mode_24,
             title = "Prompt Biometric",
+            desc = "Prompt Biometric",
+            enum = "PROMPT_BIOMETRIC"
+        ),
+        FeatureModel(
+            featureIcon = R.drawable.baseline_developer_mode_24,
+            title = "Prompt Biometric",
             desc = "Prompt Encrypt Secure Biometric",
             enum = "PROMPT_ENCRYPT_SECURE_BIOMETRIC"
         ),
@@ -87,10 +95,8 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
         corePlatformBiometricManager = CorePlatformBiometricManager()
         corePlatformBiometricManager.initialize(
             this,
-            "example_core_platform_key"
+            "example_core_platform_key_v2"
         )
-
-
 
         viewModel = MainViewModel(
             exampleCorePlatformUseCase = ExampleCorePlatformUseCaseImpl(
@@ -161,12 +167,27 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
                 viewModel.getAddress()
             }
 
+            "PROMPT_BIOMETRIC" -> {
+                corePlatformBiometricManager.prompt(
+                    activity = this,
+                    title = "TITLE",
+                    description = "DESCRIPTION",
+                    negativeText = "NEGATIVE TEXT",
+                    callBack = object : BiometricCallBack {
+                        override fun onSuccessAuthenticate() {
+                            super.onSuccessAuthenticate()
+                            println("MASUK AUTHENTICATE")
+                        }
+                    }
+                )
+            }
+
             "PROMPT_ENCRYPT_SECURE_BIOMETRIC" -> {
                 corePlatformBiometricManager.promptEncrypt(
                     title = "TES TITLE ENCRYPT",
                     description = "DESC ENCRYPT",
                     negativeText = "NEGATIVE",
-                    callBack = object : CorePlatformBiometricManager.CallBack {
+                    callBack = object : CryptoBiometricCallBack {
                         override fun onSuccessAuthenticateForEncrypt(
                             cipher: Cipher,
                             encodedIvKey: String
@@ -178,6 +199,7 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
                                 Base64.encodeToString(encryptedPassword, Base64.NO_WRAP)
                             this@MainActivity.encodedIvKey = encodedIvKey
                             println("MASUK ENCODED ENCRYPTED PASSWORD: $encodedEncryptedPassword")
+                            println("MASUK ENCODED IV KEY: ${this@MainActivity.encodedIvKey}")
                         }
                     })
             }
@@ -188,7 +210,7 @@ class MainActivity : AppCompatActivity(), ListExampleAdapter.Callback {
                     description = "DESC DECRYPT",
                     negativeText = "NEGATIVE",
                     encodedIvKey = encodedIvKey,
-                    callBack = object : CorePlatformBiometricManager.CallBack {
+                    callBack = object : CryptoBiometricCallBack {
                         override fun onSuccessAuthenticateForDecrypt(cipher: Cipher) {
                             super.onSuccessAuthenticateForDecrypt(cipher)
                             val decodedPassword =
