@@ -44,7 +44,7 @@ dependencies {
 
     implementation("io.reactivex.rxjava3:rxjava:3.1.8")
     implementation("io.reactivex.rxjava3:rxandroid:3.0.2")
-    api("com.google.android.gms:play-services-location:21.2.0")
+    api("com.google.android.gms:play-services-location:21.3.0")
 
     api("androidx.biometric:biometric:1.1.0")
 }
